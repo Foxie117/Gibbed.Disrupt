@@ -1,0 +1,20 @@
+.vs/
+bin/*.dll
+bin/*.exe
+bin/*.pdb
+*/bin/Debug/
+*/bin/Release/
+*/obj/Debug/
+*/obj/Release/
+*/obj/x86/
+_remove/
+
+# OS-generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
