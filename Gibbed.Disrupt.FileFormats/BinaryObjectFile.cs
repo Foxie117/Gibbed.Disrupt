@@ -32,16 +32,19 @@ namespace Gibbed.Disrupt.FileFormats
     {
         private const uint _Signature = 0x4643626E; // 'FCbn' FarCry Binary N???
 
+        public string Header = "";
         public ushort Version = 3;
         public HeaderFlags Flags = HeaderFlags.None;
         public BinaryObject Root;
 
         public void Serialize(Stream output)
         {
+            /*
             if (this.Version != 3)
             {
                 throw new FormatException("unsupported file version");
             }
+            */
 
             if (this.Flags != HeaderFlags.None)
             {
@@ -59,13 +62,80 @@ namespace Gibbed.Disrupt.FileFormats
                 data.Flush();
                 data.Position = 0;
 
+                // write header
+                string headerString = this.Header;
+
+                if (headerString.Length > 0)
+                {
+                    Utility.Log("Writing header...");
+
+                    byte[] headerBytes = Utility.HexToBytes(headerString);
+                    string headerBytesString = BitConverter.ToString(headerBytes).Replace("-", "");
+
+                    //Utility.Log($"Writing header...\n\tfrom: {headerString}\n\tto: {headerBytesString}");
+
+                    output.Write(headerBytes, 0, headerBytes.Length);
+
+                    Utility.Log("Done!");
+                }
+
+                // write magic
                 output.WriteValueU32(_Signature, endian);
+
+                // write version
                 output.WriteValueU16(this.Version, endian);
+
+                // write everything else
                 output.WriteValueEnum<HeaderFlags>(this.Flags, endian);
                 output.WriteValueU32(totalObjectCount, endian);
                 output.WriteValueU32(totalValueCount, endian);
                 output.WriteFromStream(data, data.Length);
             }
+        }
+
+        byte[] GetHeaderBytes(Stream input, long length)
+        {
+            input.Position = 0;
+
+            byte[] buffer = new byte[length];
+
+            int read = 0;
+            int chunk = 0;
+
+            while ((chunk = input.Read(buffer, read, buffer.Length - read)) > 0)
+            {
+                read += chunk;
+
+                if (read == buffer.Length)
+                {
+                    int nextByte = input.ReadByte();
+
+                    if (nextByte == -1)
+                    {
+                        return buffer;
+                    }
+
+                    byte[] newBuffer = new byte[buffer.Length];
+                    Array.Copy(buffer, newBuffer, buffer.Length);
+
+                    buffer = newBuffer;
+                }
+            }
+
+            byte[] ret = new byte[read];
+            Array.Copy(buffer, ret, read);
+            return ret;
+        }
+
+        string GetHeaderString(Stream input, long offset)
+        {
+            byte[] bytes = GetHeaderBytes(input, offset);
+
+            string header = BitConverter.ToString(bytes).Replace("-", "");
+
+            FileLogger.Log(header);
+
+            return header;
         }
 
         public void Deserialize(Stream input)
@@ -111,27 +181,44 @@ namespace Gibbed.Disrupt.FileFormats
             Console.Write($"\nFile info:\n\tMagic = {magic:X8}\n\tVersion = {version}\n\tFlags = {flags}\n");
             */
 
-            string prefix = "";
 
             var endian = Endian.Little;
 
-            uint magic = 0;
+            // store header, read magic
+            uint magic = input.ReadValueU32(endian);
+            long magicOffset = 0;
+            string header = "";
 
-            Utility.Log("Searching for header...");
-
-            while (magic != _Signature)
+            if (magic != _Signature)
             {
+                Utility.Log("Reading header...");
+
+                while (magicOffset == 0)
+                {
+                    var latest = input.ReadValueU32();
+
+                    if (latest == _Signature)
+                    {
+                        magicOffset = input.Position - 4;
+
+                        Utility.Log("Signature found!");
+
+                        break;
+                    }
+                }
+
+                header = GetHeaderString(input, magicOffset);
+
+                input.Position = magicOffset;
                 magic = input.ReadValueU32(endian);
 
-                if (magic != _Signature)
-                {
-                    prefix += $"{magic.Swap():X8}";
-                }
+                Utility.Log("Done!");
             }
 
-            Utility.Log("Header found!");
-
+            // store version
             var version = input.ReadValueU16(endian);
+
+            // everything else
             var flags = input.ReadValueEnum<HeaderFlags>(endian);
 
             var totalObjectCount = input.ReadValueU32(endian);
@@ -139,11 +226,12 @@ namespace Gibbed.Disrupt.FileFormats
 
             var pointers = new List<BinaryObject>();
 
+            Console.Write($"Magic: {magic:X8}\nVersion: {version:X4}\nFlags: {flags}\nHeader Length: {header.Length / 2}\n\n");
+
+            this.Header = header;
             this.Version = version;
             this.Flags = flags;
             this.Root = BinaryObject.Deserialize(null, input, pointers, endian);
-
-            Console.Write($"Magic: {magic:X8}\nVersion: {version}\nFlags: {flags}\nPrefix: {prefix}\n\n");
         }
 
         [Flags]

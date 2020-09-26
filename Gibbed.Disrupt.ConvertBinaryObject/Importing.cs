@@ -28,6 +28,7 @@ using System.Linq;
 using System.Xml.XPath;
 using Gibbed.Disrupt.BinaryObjectInfo;
 using Gibbed.Disrupt.FileFormats;
+using CBR;
 
 namespace Gibbed.Disrupt.ConvertBinaryObject
 {
@@ -36,26 +37,11 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
         public BinaryObject Import(string basePath,
                                    XPathNavigator nav)
         {
+            //Console.WriteLine($"Imported header = {nav.GetAttribute("header", "")}");
+
             var root = new BinaryObject();
             ReadNode(root, new BinaryObject[0], basePath, nav, null);
             return root;
-        }
-
-        string HexToString(string hex)
-        {
-            string ascii = "";
-
-            for (int i = 0; i < hex.Length / 2; i++)
-            {
-                string chars = $"{hex[i * 2]}{hex[(i * 2) + 1]}";
-
-                if (chars != "00")
-                {
-                    ascii += (char) Convert.ToInt32(chars, 16);
-                }
-            }
-
-            return ascii;
         }
 
         private void ReadNode(BinaryObject node,
@@ -72,7 +58,7 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
             LoadNameAndHash(nav, out className, out classNameHash);
 
             //Console.WriteLine($"currentFileName = {currentFileName}");
-            Console.WriteLine($"{classNameHash:X8} = {className}");
+            //Console.WriteLine($"{classNameHash:X8} = {className}");
 
             node.NameHash = classNameHash;
 
@@ -88,7 +74,7 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
 
                 if (fieldName != null && fieldNameHash == 0x9D8873F8 && currentFileName != null) // crc32(text_hidName)
                 {
-                    var specifiedName = HexToString(fields.Current.Value);
+                    var specifiedName = Utility.HexToString(fields.Current.Value);
                     specifiedName = specifiedName.Replace('"', '_').Replace(':', '_').Replace('*', '_').Replace('?', '_').Replace('<', '_').Replace('>', '_').Replace('|', '_');
 
                     if (!currentFileName.Equals(specifiedName))
@@ -170,51 +156,6 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
 
                 HandleChildNode(node, chain, Path.GetDirectoryName(inputPath), root, external.Substring(0, external.LastIndexOf('.')).Replace('\\', '/'));
             }
-        }
-
-        private static uint? GetClassDefinitionByField(string classFieldName, uint? classFieldHash, XPathNavigator nav)
-        {
-            uint? hash = null;
-
-            if (string.IsNullOrEmpty(classFieldName) == false)
-            {
-                var fieldByName = nav.SelectSingleNode("field[@name=\"" + classFieldName + "\"]");
-                if (fieldByName != null)
-                {
-                    uint temp;
-                    if (uint.TryParse(fieldByName.Value,
-                                      NumberStyles.AllowHexSpecifier,
-                                      CultureInfo.InvariantCulture,
-                                      out temp) == false)
-                    {
-                        throw new InvalidOperationException();
-                    }
-                    hash = temp;
-                }
-            }
-
-            if (hash.HasValue == false &&
-                classFieldHash.HasValue == true)
-            {
-                var fieldByHash =
-                    nav.SelectSingleNode("field[@hash=\"" +
-                                         classFieldHash.Value.ToString("X8", CultureInfo.InvariantCulture) +
-                                         "\"]");
-                if (fieldByHash != null)
-                {
-                    uint temp;
-                    if (uint.TryParse(fieldByHash.Value,
-                                      NumberStyles.AllowHexSpecifier,
-                                      CultureInfo.InvariantCulture,
-                                      out temp) == false)
-                    {
-                        throw new InvalidOperationException();
-                    }
-                    hash = temp;
-                }
-            }
-
-            return hash;
         }
 
         private static void LoadNameAndHash(XPathNavigator nav, out string name, out uint hash)

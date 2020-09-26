@@ -40,6 +40,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FileLogger.cs" />
     <Compile Include="Memory.cs" />
     <Compile Include="StringHasher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

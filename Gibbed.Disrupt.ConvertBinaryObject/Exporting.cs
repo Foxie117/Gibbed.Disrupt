@@ -30,6 +30,7 @@ using Gibbed.Disrupt.FileFormats;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using CBR;
+using System;
 
 namespace Gibbed.Disrupt.ConvertBinaryObject
 {
@@ -49,7 +50,7 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
             using (var writer = XmlWriter.Create(outputPath, settings))
             {
                 writer.WriteStartDocument();
-                WriteNode(writer, new BinaryObject[0], bof.Root);
+                WriteRootNode(writer, new BinaryObject[0], bof);
                 writer.WriteEndDocument();
             }
         }
@@ -87,6 +88,22 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
                 {
                     writer.WriteStartElement("object");
                     writer.WriteAttributeString("name", "EntityLibraries");
+
+                    // add version attribute to root object
+                    string bofVersion = bof.Version.ToString();
+
+                    if (bofVersion != null)
+                    {
+                        writer.WriteAttributeString("version", bofVersion);
+                    }
+
+                    // add header attribute to root object
+                    string bofHeader = bof.Header;
+
+                    if (bofHeader.Length > 0)
+                    {
+                        writer.WriteAttributeString("header", bofHeader);
+                    }
 
                     var libraryNames = new Dictionary<string, int>();
 
@@ -249,10 +266,34 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
                 writer.WriteStartDocument();
 
                 var root = bof.Root;
+
                 var chain = new[] { root };
                 {
                     writer.WriteStartElement("object");
                     writer.WriteAttributeString("name", "lib");
+
+                    // add version attribute to root object
+                    string bofVersion = bof.Version.ToString();
+
+                    if (bofVersion != null)
+                    {
+                        writer.WriteAttributeString("version", bofVersion);
+                    }
+
+                    // add header attribute to root object
+                    string bofHeader = bof.Header;
+
+                    if (bofHeader.Length > 0)
+                    {
+                        writer.WriteAttributeString("header", bofHeader);
+
+                        /*
+                        var headerBytes = Utility.HexToBytes(bofHeader);
+                        var headerBytesString = BitConverter.ToString(headerBytes).Replace("-", "");
+
+                        Console.WriteLine($"Test = {headerBytesString}");
+                        */
+                    }
 
                     Directory.CreateDirectory(basePath);
 
@@ -406,6 +447,81 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
             }
 
             return true;
+        }
+
+        private static void WriteRootNode(XmlWriter writer,
+                                          IEnumerable<BinaryObject> parentChain,
+                                          BinaryObjectFile bof)
+        {
+            BinaryObject node = bof.Root;
+
+            var chain = parentChain.Concat(new[] { node });
+
+            writer.WriteStartElement("object");
+
+            // get object name from object hash via string list
+            var objectHashInput = (int)node.NameHash;
+
+            if (StringHasher.CanResolveHash(objectHashInput))
+            {
+                var objectHashOutput = StringHasher.ResolveHash(objectHashInput);
+
+                writer.WriteAttributeString("name", objectHashOutput);
+            }
+            else
+            {
+                writer.WriteAttributeString("hash", node.NameHash.ToString("X8"));
+            }
+
+            // add version attribute to root object
+            string bofVersion = bof.Version.ToString();
+
+            if (bofVersion != null)
+            {
+                writer.WriteAttributeString("version", bofVersion);
+            }
+
+            // add header attribute to root object
+            string bofHeader = bof.Header;
+
+            if (bofHeader.Length > 0)
+            {
+                writer.WriteAttributeString("header", bofHeader);
+            }
+
+            if (node.Fields != null)
+            {
+                foreach (var kv in node.Fields)
+                {
+                    writer.WriteStartElement("field");
+
+                    // get field name from field hash via string list
+                    var fieldHashInput = (int)kv.Key;
+
+                    if (StringHasher.CanResolveHash(fieldHashInput))
+                    {
+                        var fieldHashOutput = StringHasher.ResolveHash(fieldHashInput);
+
+                        writer.WriteAttributeString("name", fieldHashOutput);
+                    }
+                    else
+                    {
+                        writer.WriteAttributeString("hash", kv.Key.ToString("X8"));
+                    }
+
+                    writer.WriteAttributeString("type", FieldHandling.GetTypeName(FieldType.BinHex));
+                    writer.WriteBinHex(kv.Value, 0, kv.Value.Length);
+
+                    writer.WriteEndElement();
+                }
+            }
+
+            foreach (var childNode in node.Children)
+            {
+                WriteNode(writer, chain, childNode);
+            }
+
+            writer.WriteEndElement();
         }
 
         private static void WriteNode(XmlWriter writer,

@@ -44,6 +44,7 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
         static void Prepare()
         {
             StringHasher.Initialize(m_directory);
+            FileLogger.Initialize(m_directory);
         }
 
         private static void Main(string[] args)
@@ -150,6 +151,9 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
 
                 using (var input = File.OpenRead(inputPath))
                 {
+                    var header = "";
+                    var version = "";
+
                     var doc = new XPathDocument(input);
                     var nav = doc.CreateNavigator();
 
@@ -158,6 +162,14 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
                     {
                         throw new FormatException();
                     }
+
+                    version = root.GetAttribute("version", "");
+                    bof.Version = (ushort) Convert.ToInt32(version);
+                    Console.WriteLine($"Imported version = {version}");
+
+                    header = root.GetAttribute("header", "");
+                    bof.Header = header;
+                    Console.WriteLine($"Imported header = {header}");
 
                     baseName = GetBaseNameFromPath(inputPath);
 
