@@ -31,6 +31,47 @@ namespace Gibbed.Disrupt.FileFormats.Hashing
             return Compute(value, 0xCBF29CE484222325ul);
         }
 
+        public static uint Compute_WD1(string value)
+        {
+            ulong hash = Compute(value);
+
+            byte[] hashBytes = BitConverter.GetBytes(hash);
+
+            Array.Reverse(hashBytes);
+
+            return BitConverter.ToUInt32(hashBytes, 4);
+        }
+
+        public static uint Compute_WD1_R(string value)
+        {
+            ulong hash = Compute(value);
+
+            byte[] hashBytes = BitConverter.GetBytes(hash);
+
+            return BitConverter.ToUInt32(hashBytes, 0);
+        }
+
+        public static ulong ComputeReverse(string value, ulong seed)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException("value");
+            }
+
+            if (value.Length == 0)
+            {
+                return 0;
+            }
+
+            var hash = seed;
+            foreach (char t in value)
+            {
+                hash *= 0x100000001B3ul;
+                hash ^= t;
+            }
+            return hash;
+        }
+
         public static ulong Compute(string value, ulong seed)
         {
             if (value == null)

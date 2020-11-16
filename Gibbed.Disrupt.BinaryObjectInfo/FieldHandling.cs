@@ -26,6 +26,7 @@ using System.Globalization;
 using System.Linq;
 using System.Xml;
 using System.Xml.XPath;
+using CBR;
 
 namespace Gibbed.Disrupt.BinaryObjectInfo
 {
@@ -68,7 +69,9 @@ namespace Gibbed.Disrupt.BinaryObjectInfo
                 [FieldType.NoCaseStringId] = new FieldHandlers.Ids.NoCaseStringIdHandler(),
                 [FieldType.PathId] = new FieldHandlers.Ids.PathIdHandler(),
                 //[FieldType.Rml] = new FieldHandlers.RmlHandler(),
-                [FieldType.Array32] = new FieldHandlers.Array32Handler()
+                [FieldType.Array32] = new FieldHandlers.Array32Handler(),
+                [FieldType.StringHash32] = new FieldHandlers.Ids.StringHash32Handler(),
+                [FieldType.StringHash64] = new FieldHandlers.Ids.StringHash64Handler()
             };
         }
 
@@ -184,6 +187,218 @@ namespace Gibbed.Disrupt.BinaryObjectInfo
 
                 throw new FormatException(string.Format("did not consume all data for {0} with type {1} (read {2}, total {3})", name, type.ToString(), read, count));
             }
+        }
+    }
+
+    public struct HashValue
+    {
+        public UInt32 CRC32;
+        public UInt32 CRC32_R;
+        public UInt32 FNV64_WD1;
+        public UInt64 CRC64_WD2;
+    }
+
+    public enum HashType
+    {
+        None = 0,
+        CRC32 = 1,
+        StringHash32, CRC32R = 2,
+        CRC64 = 3,
+        HashType04, CRC64R = 4,
+        FNV64 = 5,
+        PathHash, FNV64_WD1 = 6,
+        StringHash64, CRC64_WD2 = 7
+    }
+
+    public struct FieldInfo
+    {
+        public struct KeyInfo
+        {
+            public string type;
+            public string name;
+        }
+
+        public struct ValueInfo
+        {
+            public string type;
+            public string value;
+            //public FieldType fieldType;
+        }
+
+        public KeyInfo key;
+        public ValueInfo value;
+
+        public static bool operator ==(FieldInfo a, FieldInfo b)
+        {
+            return a.Equals(b);
+        }
+        public static bool operator !=(FieldInfo a, FieldInfo b)
+        {
+            return !a.Equals(b);
+        }
+    }
+
+    public static class HashHandler
+    {
+        public static HashValue ResolveString_old(string input)
+        {
+            return new HashValue
+            {
+                CRC32 = FileFormats.Hashing.CRC32.Compute(input),
+                CRC32_R = FileFormats.Hashing.CRC32.Compute_R(input),
+                FNV64_WD1 = FileFormats.Hashing.FNV64.Compute_WD1(input),
+                CRC64_WD2 = FileFormats.Hashing.CRC64_WD2.Compute(input)
+            };
+        }
+
+        public static ulong[] CollectHashes(string input)
+        {
+            ulong[] hashArray = new ulong[Enum.GetNames(typeof(HashType)).Length];
+
+            hashArray[(int) HashType.CRC32] = (ulong) FileFormats.Hashing.CRC32.Compute(input);
+            hashArray[(int) HashType.CRC32R] = (ulong) FileFormats.Hashing.CRC32.Compute_R(input);
+            hashArray[(int) HashType.FNV64_WD1] = (ulong) FileFormats.Hashing.FNV64.Compute_WD1(input);
+            hashArray[(int) HashType.CRC64_WD2] = (ulong) FileFormats.Hashing.CRC64_WD2.Compute_R(input);
+
+            return hashArray;
+        }
+    }
+
+    public static class TypeGuesser
+    {
+        public static bool FieldHandler(byte[] fieldValueBytes, out string fieldTypeString, out string fieldValueString)
+        {
+            bool outcome = false;
+
+            string valueString = BitConverter.ToString(fieldValueBytes).Replace("-", "");
+
+            FieldType fieldType = FieldType.BinHex;
+            string fieldValue = valueString;
+
+            FieldType r_outputFieldType = fieldType;
+            string r_outputFieldValue = fieldValue;
+
+            // determine valid field type
+            if (TryParse(fieldValueBytes, out r_outputFieldType, out r_outputFieldValue) == true)
+            {
+                //Console.WriteLine("Found type");
+
+                fieldType = r_outputFieldType;
+                fieldValue = r_outputFieldValue;
+
+                outcome = true;
+            }
+
+            fieldTypeString = FieldHandling.GetTypeName(fieldType);
+            fieldValueString = fieldValue;
+
+            //Console.WriteLine($"FieldHandler:\n\tType: {fieldTypeString}\n\tValue: {fieldValueString}");
+
+            return outcome;
+        }
+
+        public static bool TryParse(byte[] value, out FieldType fieldType, out string fieldValue)
+        {
+            bool outcome = false;
+
+            T Deserialize<T>(byte[] inputValue, FieldType inputType)
+            {
+                outcome = true;
+
+                var output = FieldHandling.Deserialize<T>(inputType, inputValue);
+
+                return output;
+            }
+
+            fieldType = FieldType.BinHex;
+            fieldValue = "";
+
+            byte preTrail = 0;
+            byte trail = 0;
+
+            if (value.Length > 1)
+            {
+                trail = value[value.Length - 1];
+
+                if (value.Length > 2)
+                {
+                    preTrail = value[value.Length - 2];
+                }
+            }
+
+            if (value.Length == 1)
+            {
+                if (value[0] > 1 &&
+                    value[0] != 255)
+                {
+                    fieldType = FieldType.Int8;
+                    fieldValue = Deserialize<sbyte>(value, fieldType).ToString();
+                }
+            }
+            else if (value.Length == 2)
+            {
+                fieldType = FieldType.Int16;
+                fieldValue = Deserialize<short>(value, fieldType).ToString();
+            }
+            else
+            {
+                //if (value.Length > 4 && trail == 0 && preTrail > 0x29 && preTrail != 0x40)
+                if (value.Length > 4 && trail == 0 && preTrail > 0)
+                {
+                    //Utility.Log($"String field\n\tTrailing byte: {trail}\n\tPre-trailing byte: {preTrail}");
+                    //Utility.Log($"{BitConverter.ToString(value).Replace("-", " ")}\n\tTrailing byte: {trail}\n\tPre-trailing byte: {preTrail}");
+
+                    fieldType = FieldType.String;
+                    fieldValue = Deserialize<string>(value, fieldType);
+                }
+            }
+
+            fieldValue = fieldValue.ToString();
+
+            //PostProcessField(fieldValue, fieldType, value.Length, out fieldValue, out fieldType);
+            //fieldValue = FieldHandling.Deserialize<string>(fieldType, value);
+            //outcome = true;
+
+            return outcome;
+        }
+
+        public static void PostProcessField(string inputFieldValue, FieldType inputFieldType, int inputFieldValueLength, out string outputFieldValue, out FieldType outputFieldType)
+        {
+            outputFieldValue = inputFieldValue;
+            outputFieldType = inputFieldType;
+
+            FieldType fieldType = FieldType.BinHex;
+
+            int r_fieldValue_int = 0;
+            float r_fieldValue_float = 0;
+
+            if (int.TryParse(inputFieldValue, out r_fieldValue_int) == true)
+            {
+                switch (inputFieldValueLength)
+                {
+                    case 1:
+                        fieldType = FieldType.Int8;
+                        break;
+                    case 2:
+                        fieldType = FieldType.Int16;
+                        break;
+                    case 4:
+                        fieldType = FieldType.Int32;
+                        break;
+                    case 8:
+                        fieldType = FieldType.Int64;
+                        break;
+                }
+
+                outputFieldValue = r_fieldValue_int.ToString();
+            }
+            else if (float.TryParse(inputFieldValue, out r_fieldValue_float) == true)
+            {
+                fieldType = FieldType.Float;
+                outputFieldValue = r_fieldValue_float.ToString();
+            }
+
+            outputFieldType = fieldType;
         }
     }
 }

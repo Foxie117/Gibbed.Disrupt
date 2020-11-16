@@ -37,6 +37,23 @@ namespace Gibbed.Disrupt.FileFormats.Hashing
             return ~hash;
         }
 
+        public static uint Compute_R(string value)
+        {
+            uint hash = 0xFFFFFFFFu;
+
+            if (value != null)
+            {
+                for (int i = 0; i < value.Length; i++)
+                {
+                    hash = _Table[(byte)hash ^ (byte)value[i]] ^ (hash >> 8);
+                }
+            }
+
+            hash = ~hash;
+
+            return (hash & 0x000000FFU) << 24 | (hash & 0x0000FF00U) << 8 | (hash & 0x00FF0000U) >> 8 | (hash & 0xFF000000U) >> 24;
+        }
+
         public static uint Compute(byte[] buffer, int offset, int count)
         {
             uint hash = 0xFFFFFFFFu;

@@ -49,6 +49,7 @@
     <Compile Include="FileDetection.cs" />
     <Compile Include="Hashing\CRC32.cs" />
     <Compile Include="Hashing\CRC64.cs" />
+    <Compile Include="Hashing\CRC64_WD2.cs" />
     <Compile Include="Hashing\FNV64.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Vector.cs" />

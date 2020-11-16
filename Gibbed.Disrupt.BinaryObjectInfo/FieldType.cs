@@ -52,5 +52,9 @@ namespace Gibbed.Disrupt.BinaryObjectInfo
 
         Rml,
         Array32,
+        Int,
+
+        StringHash32,
+        StringHash64
     }
 }

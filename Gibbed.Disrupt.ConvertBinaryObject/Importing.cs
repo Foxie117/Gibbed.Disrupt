@@ -72,9 +72,11 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
 
                 LoadNameAndHash(fields.Current, out string fieldName, out uint fieldNameHash);
 
-                if (fieldName != null && fieldNameHash == 0x9D8873F8 && currentFileName != null) // crc32(text_hidName)
+                //if (fieldName != null && fieldNameHash == 0x9D8873F8 && currentFileName != null) // crc32(text_hidName)
+                if (fieldName != null && fieldNameHash == 0xB9295CC7 && currentFileName != null) // crc32(hidName)
                 {
-                    var specifiedName = Utility.HexToString(fields.Current.Value);
+                    //var specifiedName = Utility.HexToString(fields.Current.Value);
+                    var specifiedName = fields.Current.Value;
                     specifiedName = specifiedName.Replace('"', '_').Replace(':', '_').Replace('*', '_').Replace('?', '_').Replace('<', '_').Replace('>', '_').Replace('|', '_');
 
                     if (!currentFileName.Equals(specifiedName))
@@ -83,8 +85,12 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
                     }
                 }
 
-                FieldType fieldType;
+                FieldType fieldType = new FieldType();
+
                 var fieldTypeName = fields.Current.GetAttribute("type", "");
+
+                //Utility.Log($"Reading field of type {fieldTypeName}");
+
                 if (Enum.TryParse(fieldTypeName, true, out fieldType) == false)
                 {
                     throw new InvalidOperationException();

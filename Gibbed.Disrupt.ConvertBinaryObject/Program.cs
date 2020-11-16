@@ -45,6 +45,8 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
         {
             StringHasher.Initialize(m_directory);
             FileLogger.Initialize(m_directory);
+
+            Utility.TestUtility();
         }
 
         private static void Main(string[] args)
@@ -165,11 +167,11 @@ namespace Gibbed.Disrupt.ConvertBinaryObject
 
                     version = root.GetAttribute("version", "");
                     bof.Version = (ushort) Convert.ToInt32(version);
-                    Console.WriteLine($"Imported version = {version}");
+                    Utility.Log($"Imported version = {version}");
 
                     header = root.GetAttribute("header", "");
                     bof.Header = header;
-                    Console.WriteLine($"Imported header = {header}");
+                    Utility.Log($"Imported header = {header}");
 
                     baseName = GetBaseNameFromPath(inputPath);
 

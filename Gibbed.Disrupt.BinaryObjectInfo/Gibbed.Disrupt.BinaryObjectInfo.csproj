@@ -44,6 +44,9 @@
     <Compile Include="ConditionValueSource.cs" />
     <Compile Include="FieldHandlers\BinHexHandler.cs" />
     <Compile Include="FieldHandlers\Ids\BaseHandler.cs" />
+    <Compile Include="FieldHandlers\Ids\PathHashHandler.cs" />
+    <Compile Include="FieldHandlers\Ids\StringHash32Handler.cs" />
+    <Compile Include="FieldHandlers\Ids\StringHash64Handler.cs" />
     <Compile Include="FieldHandlers\VectorColorHandler.cs" />
     <Compile Include="FieldHandlers\VectorHandler.cs" />
     <Compile Include="FieldHandlers\VectorIntHandler.cs" />
@@ -86,6 +89,10 @@
     <Compile Include="XmlLoadException.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Custom\CBR.csproj">
+      <Project>{51dc7657-040e-4a73-ad58-c0481c32fec7}</Project>
+      <Name>CBR</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Gibbed.Disrupt.FileFormats\Gibbed.Disrupt.FileFormats.csproj">
       <Project>{CCFBF6B8-BA2E-49C1-AFA8-B12B1F1A125D}</Project>
       <Name>Gibbed.Disrupt.FileFormats</Name>

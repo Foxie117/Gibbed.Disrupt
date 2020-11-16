@@ -226,7 +226,9 @@ namespace Gibbed.Disrupt.FileFormats
 
             var pointers = new List<BinaryObject>();
 
-            Console.Write($"Magic: {magic:X8}\nVersion: {version:X4}\nFlags: {flags}\nHeader Length: {header.Length / 2}\n\n");
+            //Console.ForegroundColor = ConsoleColor.DarkGray;
+            //Console.Write($"Magic: {magic:X8}\nVersion: {version:X4}\nFlags: {flags}\nHeader Length: {header.Length / 2}\n\n");
+            //Console.ResetColor();
 
             this.Header = header;
             this.Version = version;

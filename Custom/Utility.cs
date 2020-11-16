@@ -42,7 +42,7 @@ namespace CBR
             for (int i = 0; i < length; i++)
             {
                 string chars = $"{hex[i * 2]}{hex[(i * 2) + 1]}";
-                byte b = byte.Parse(chars, NumberStyles.HexNumber, CultureInfo.InvariantCulture); ;
+                byte b = byte.Parse(chars, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
 
                 bytes[i] = b;
 
@@ -50,6 +50,13 @@ namespace CBR
             }
 
             return bytes;
+        }
+
+        public static void TestUtility()
+        {
+            //string outputString = $"{BitConverter.ToString(inputBytes)}";
+
+            //Utility.Log($"TestUtility: {outputString}");
         }
     }
 }

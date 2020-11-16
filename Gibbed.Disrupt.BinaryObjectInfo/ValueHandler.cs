@@ -20,6 +20,7 @@
  *    distribution.
  */
 
+using System;
 using System.Xml;
 using System.Xml.XPath;
 
@@ -40,8 +41,17 @@ namespace Gibbed.Disrupt.BinaryObjectInfo
 
         public byte[] Import(FieldType arrayFieldType, XPathNavigator nav)
         {
+            /*
             var value = this.Parse(nav.Value);
             var bytes = this.Serialize(value);
+            return bytes;
+            */
+
+            var value = this.Parse(nav.Value);
+            var bytes = this.Serialize(value);
+
+            //Console.WriteLine($"Value: {value:X8}");
+
             return bytes;
         }
 
